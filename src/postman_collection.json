@@ -1,0 +1,118 @@
+# Quipux - Earthquake Processing API
+
+## Descripcion
+
+Plataforma backend para consumir eventos sismicos de la API de USGS, procesarlos, almacenarlos en MongoDB y exponer informacion mediante una API REST desarrollada con FastAPI.
+
+## Arquitectura
+
+- USGS Earthquake API: fuente de datos.
+- Servicio de ingesta: consulta USGS cada 3 minutos.
+- MongoDB: almacenamiento de eventos, metricas y reportes.
+- FastAPI: API REST.
+- Airflow: DAG para generar reportes consolidados cada hora.
+- Docker Compose: orquestacion de los servicios.
+
+## Tecnologias
+
+- Python 3.12
+- FastAPI
+- Pydantic
+- MongoDB
+- PyMongo
+- Requests
+- Apache Airflow
+- Docker / Docker Compose
+
+## Ejecucion con Docker
+
+Desde la carpeta src:
+
+`ash
+docker compose up -d --build
+
+
+@"
+# Quipux - Earthquake Processing API
+
+## Descripcion
+
+Plataforma backend para consumir eventos sismicos de la API de USGS, procesarlos, almacenarlos en MongoDB y exponer informacion mediante una API REST desarrollada con FastAPI.
+
+## Arquitectura
+
+- USGS Earthquake API: fuente de datos.
+- Servicio de ingesta: consulta USGS cada 3 minutos.
+- MongoDB: almacenamiento de eventos, metricas y reportes.
+- FastAPI: API REST.
+- Airflow: DAG para generar reportes consolidados cada hora.
+- Docker Compose: orquestacion de los servicios.
+
+## Tecnologias
+
+- Python 3.12
+- FastAPI
+- Pydantic
+- MongoDB
+- PyMongo
+- Requests
+- Apache Airflow
+- Docker / Docker Compose
+
+## Ejecucion con Docker
+
+Desde la carpeta src:
+
+`ash
+docker compose up -d --build
+@"
+{
+  "info": {
+    "name": "Quipux Earthquake API",
+    "description": "Coleccion de pruebas para la API de procesamiento de eventos sismicos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "Earthquakes",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/earthquakes/"
+      }
+    },
+    {
+      "name": "Earthquakes - Filter and Pagination",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/earthquakes/?magnitude_min=2&page=1&page_size=10&sort_by=magnitude&sort_order=desc"
+      }
+    },
+    {
+      "name": "Metrics",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/metrics/"
+      }
+    },
+    {
+      "name": "Reports",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/reports/"
+      }
+    }
+  ]
+}
