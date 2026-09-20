@@ -9,5 +9,55 @@ services:
     volumes:
       - mongodb_data:/data/db
 
+  api:
+    build:
+      context: ./src
+    container_name: quipux-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      DATABASE_NAME: earthquake_db
+    depends_on:
+      - mongodb
+
+  ingestion:
+    build:
+      context: ./src
+    container_name: quipux-ingestion
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      DATABASE_NAME: earthquake_db
+    depends_on:
+      - mongodb
+    command: ["python", "-m", "services.ingestion_runner"]
+
+  airflow:
+    image: apache/airflow:2.10.5-python3.12
+    container_name: quipux-airflow
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      MONGO_URI: mongodb://mongodb:27017
+      DATABASE_NAME: earthquake_db
+      PYTHONPATH: /opt/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: "pymongo requests pydantic pydantic-settings"
+    volumes:
+      - ./src/airflow/dags:/opt/airflow/dags
+      - ./src/services:/opt/airflow/services
+      - ./src/database:/opt/airflow/database
+      - ./src/models:/opt/airflow/models
+      - ./src/utils:/opt/airflow/utils
+      - ./src/clients:/opt/airflow/clients
+      - ./src/config.py:/opt/airflow/config.py
+    depends_on:
+      - mongodb
+    command: bash -c "airflow db migrate && airflow scheduler"
+
 volumes:
   mongodb_data:

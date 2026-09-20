@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import Annotated
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 
 from database.connection import earthquakes_collection
+from models.earthquake_query import EarthquakeQueryParams
 
 
 router = APIRouter(
@@ -13,87 +14,28 @@ router = APIRouter(
 
 @router.get("/")
 def get_earthquakes(
-    magnitude_min: Optional[float] = Query(
-        None,
-        ge=0,
-        description="Magnitud mínima"
-    ),
-    magnitude_max: Optional[float] = Query(
-        None,
-        ge=0,
-        description="Magnitud máxima"
-    ),
-    page: int = Query(
-        1,
-        ge=1,
-        description="Número de página"
-    ),
-    page_size: int = Query(
-        20,
-        ge=1,
-        le=100,
-        description="Cantidad de registros por página"
-    ),
-    sort_by: str = Query(
-        "event_time",
-        description="Campo por el cual ordenar"
-    ),
-    sort_order: str = Query(
-        "desc",
-        pattern="^(asc|desc)$",
-        description="Orden ascendente o descendente"
-    )
+    params: Annotated[EarthquakeQueryParams, Query()]
 ):
-    """
-    Consulta eventos sísmicos almacenados en MongoDB.
-    """
-
-    if (
-        magnitude_min is not None
-        and magnitude_max is not None
-        and magnitude_min > magnitude_max
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="magnitude_min no puede ser mayor que magnitude_max"
-        )
-
     query = {}
 
-    # Filtro por magnitud mínima
-    if magnitude_min is not None:
-        query.setdefault("magnitude", {})["$gte"] = magnitude_min
+    if params.magnitude_min is not None:
+        query.setdefault("magnitude", {})["$gte"] = params.magnitude_min
 
-    # Filtro por magnitud máxima
-    if magnitude_max is not None:
-        query.setdefault("magnitude", {})["$lte"] = magnitude_max
+    if params.magnitude_max is not None:
+        query.setdefault("magnitude", {})["$lte"] = params.magnitude_max
 
-    # Campos permitidos para ordenar
-    allowed_sort_fields = {
-        "event_time",
-        "magnitude",
-        "location",
-        "depth"
-    }
+    sort_direction = 1 if params.sort_order == "asc" else -1
 
-    if sort_by not in allowed_sort_fields:
-        raise HTTPException(
-            status_code=400,
-            detail=f"sort_by debe ser uno de: {', '.join(allowed_sort_fields)}"
-        )
-
-    sort_direction = 1 if sort_order == "asc" else -1
-
-    skip = (page - 1) * page_size
+    skip = (params.page - 1) * params.page_size
 
     total = earthquakes_collection.count_documents(query)
 
     cursor = (
         earthquakes_collection
         .find(query)
-        .sort(sort_by, sort_direction)
+        .sort(params.sort_by, sort_direction)
         .skip(skip)
-        .limit(page_size)
+        .limit(params.page_size)
     )
 
     earthquakes = list(cursor)
@@ -102,9 +44,12 @@ def get_earthquakes(
         earthquake["_id"] = str(earthquake["_id"])
 
     return {
-        "page": page,
-        "page_size": page_size,
+        "page": params.page,
+        "page_size": params.page_size,
         "total": total,
-        "total_pages": (total + page_size - 1) // page_size,
+        "total_pages": (
+            (total + params.page_size - 1)
+            // params.page_size
+        ),
         "data": earthquakes
     }

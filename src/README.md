@@ -1,10 +1,12 @@
 # Quipux Earthquake API
 
-## Descripcion
+Backend desarrollado para la prueba técnica de Quipux.
 
-Backend para consumir eventos sismicos de USGS, procesarlos, almacenarlos en MongoDB y exponerlos mediante una API REST con FastAPI.
+La solución consume eventos sísmicos de la API pública de USGS, realiza procesamiento de los datos, los almacena en MongoDB, calcula métricas, genera reportes horarios mediante Apache Airflow y expone la información mediante una API REST desarrollada con FastAPI.
 
-## Tecnologias
+---
+
+## Tecnologías
 
 - Python 3.12
 - FastAPI
@@ -16,98 +18,44 @@ Backend para consumir eventos sismicos de USGS, procesarlos, almacenarlos en Mon
 - Docker
 - Docker Compose
 
-## Componentes
+---
 
-- USGS: fuente de eventos sismicos.
-- Servicio de ingesta: consulta USGS cada 3 minutos.
-- MongoDB: almacenamiento de eventos, metricas y reportes.
-- FastAPI: API REST.
-- Airflow: generacion de reportes horarios.
-- Docker Compose: orquestacion de servicios.
+## Arquitectura
 
-## Ejecucion
+La solución está organizada por responsabilidades:
 
-Desde la carpeta src:
+```text
+USGS Earthquake API
+        |
+        | Cada 3 minutos
+        v
+Servicio de Ingesta
+        |
+        v
+Transformación de datos
+        |
+        v
+MongoDB
+   |          |             |
+   v          v             v
+earthquakes  metrics   hourly_reports
+   |          |             ^
+   |          |             |
+   +----------+-------------+
+              |
+              v
+           FastAPI
+              |
+       +------+------+------+
+       |      |      |      |
+       v      v      v      v
+ /earthquakes /metrics /reports /health
 
-    docker compose up -d --build
-
-## Documentacion API
-
-Swagger:
-
-    http://localhost:8000/docs
-
-Health check:
-
-    GET /health
-
-Eventos:
-
-    GET /earthquakes/
-
-Metricas:
-
-    GET /metrics/
-
-Reportes:
-
-    GET /reports/
-
-## Funcionalidades
-
-### Eventos
-
-- Filtrado por magnitud minima y maxima.
-- Paginacion.
-- Ordenamiento.
-- Validacion de parametros.
-
-### Ingestion
-
-El servicio consulta la API de USGS cada 3 minutos.
-
-Los eventos se identifican mediante event_id y se almacenan mediante upsert para evitar duplicados.
-
-### Metricas
-
-- Cantidad de terremotos de la ultima hora.
-- Magnitud promedio.
-- Magnitud maxima.
-
-### Reportes
-
-Los reportes horarios se almacenan en la coleccion hourly_reports.
-
-### Airflow
-
-DAG:
-
-    airflow/dags/earthquake_hourly_report.py
-
-El DAG genera un reporte consolidado cada hora.
-
-## Variables de entorno
-
-    MONGO_URI
-    DATABASE_NAME
-
-En Docker:
-
-    MONGO_URI=mongodb://mongodb:27017
-    DATABASE_NAME=earthquake_db
-
-## Estructura
-
-    api/
-    clients/
-    database/
-    models/
-    services/
-    utils/
-    airflow/
-    Dockerfile
-    docker-compose.yml
-    requirements.txt
-    postman_collection.json
-    architecture.md
-    README.md
+Apache Airflow
+      |
+      | Cada hora
+      v
+Reporte consolidado
+      |
+      v
+MongoDB
