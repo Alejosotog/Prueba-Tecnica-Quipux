@@ -9,6 +9,22 @@ services:
     volumes:
       - mongodb_data:/data/db
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: quipux-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: quipux
+      RABBITMQ_DEFAULT_PASS: quipux123
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: ./src
@@ -30,9 +46,33 @@ services:
     environment:
       MONGO_URI: mongodb://mongodb:27017
       DATABASE_NAME: earthquake_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: quipux
+      RABBITMQ_PASSWORD: quipux123
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     command: ["python", "-m", "services.ingestion_runner"]
+
+  event_processor:
+    build:
+      context: ./src
+    container_name: quipux-event-processor
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+      DATABASE_NAME: earthquake_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: quipux
+      RABBITMQ_PASSWORD: quipux123
+    depends_on:
+      mongodb:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    command: ["python", "-m", "messaging.rabbitmq_consumer"]
 
   airflow:
     image: apache/airflow:2.10.5-python3.12
@@ -59,5 +99,29 @@ services:
       - mongodb
     command: bash -c "airflow db migrate && airflow scheduler"
 
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: quipux-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: quipux-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   mongodb_data:
+  grafana_data:
